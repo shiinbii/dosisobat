@@ -73,6 +73,17 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
     );
     CREATE INDEX IF NOT EXISTS idx_history_patient ON history(patientName, patientDob);
   `);
+
+  // Migrasi: tambah kolom cloudId (untuk sync ke Supabase) kalau belum ada.
+  // SQLite ALTER TABLE ADD COLUMN tidak punya IF NOT EXISTS, jadi cek dulu.
+  const cols = await _db.getAllAsync<{ name: string }>(`PRAGMA table_info(history)`);
+  if (!cols.some((c) => c.name === 'cloudId')) {
+    await _db.execAsync(`
+      ALTER TABLE history ADD COLUMN cloudId TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_history_cloudid ON history(cloudId) WHERE cloudId IS NOT NULL;
+    `);
+  }
+
   return _db;
 }
 

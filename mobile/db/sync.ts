@@ -189,15 +189,84 @@ export async function addHistory(rec: {
   icdCode?: string; notes?: string;
 }) {
   const db = await getDb();
+  const cloudId = (globalThis as any).crypto?.randomUUID
+    ? (globalThis as any).crypto.randomUUID()
+    : `loc-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
   await db.runAsync(
-    `INSERT INTO history (patientName, patientDob, drugId, drugName, doseType, weightKg, perDoseMg, perDayMg, freqPerDay, icdCode, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO history (patientName, patientDob, drugId, drugName, doseType, weightKg, perDoseMg, perDayMg, freqPerDay, icdCode, notes, cloudId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       rec.patientName, rec.patientDob, rec.drugId, rec.drugName, rec.doseType,
       rec.weightKg ?? null, rec.perDoseMg, rec.perDayMg, rec.freqPerDay,
-      rec.icdCode ?? null, rec.notes ?? null,
+      rec.icdCode ?? null, rec.notes ?? null, cloudId,
     ]
   );
+
+  // Best-effort cloud upload — jangan blok user kalau gagal (offline, dll.)
+  void uploadHistoryToCloud({ ...rec, cloudId }).catch((e) => {
+    console.warn('[history] gagal upload ke cloud:', e?.message ?? e);
+  });
+}
+
+async function uploadHistoryToCloud(rec: {
+  cloudId: string;
+  patientName: string; patientDob: string; drugId: string; drugName: string;
+  doseType: 'PEDIATRIC' | 'ADULT'; weightKg?: number;
+  perDoseMg: number; perDayMg: number; freqPerDay: number;
+  icdCode?: string; notes?: string;
+}) {
+  const { data: sess } = await supabase.auth.getSession();
+  if (!sess.session) return; // tidak login → skip
+  const userId = sess.session.user.id;
+
+  const { error } = await supabase.from('patient_history').insert({
+    id: rec.cloudId,
+    user_id: userId,
+    patient_name: rec.patientName,
+    patient_dob: rec.patientDob,
+    drug_id: rec.drugId,
+    drug_name_snap: rec.drugName,
+    dose_type: rec.doseType,
+    weight_kg: rec.weightKg ?? null,
+    per_dose_mg: rec.perDoseMg,
+    per_day_mg: rec.perDayMg,
+    freq_per_day: rec.freqPerDay,
+    icd_code: rec.icdCode ?? null,
+    notes: rec.notes ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function syncHistoryFromCloud(): Promise<{ inserted: number; existing: number }> {
+  const db = await getDb();
+  const { data: sess } = await supabase.auth.getSession();
+  if (!sess.session) throw new Error('Belum login.');
+
+  const { data: rows, error } = await supabase
+    .from('patient_history')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  let inserted = 0;
+  let existing = 0;
+  for (const r of rows ?? []) {
+    const result = await db.runAsync(
+      `INSERT OR IGNORE INTO history
+        (patientName, patientDob, drugId, drugName, doseType, weightKg,
+         perDoseMg, perDayMg, freqPerDay, icdCode, notes, createdAt, cloudId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        r.patient_name, r.patient_dob, r.drug_id, r.drug_name_snap, r.dose_type,
+        r.weight_kg, r.per_dose_mg, r.per_day_mg, r.freq_per_day,
+        r.icd_code, r.notes, r.created_at, r.id,
+      ]
+    );
+    if (result.changes > 0) inserted += 1;
+    else existing += 1;
+  }
+  return { inserted, existing };
 }
 
 export async function listHistory(opts: { patientName?: string; patientDob?: string; limit?: number } = {}) {
