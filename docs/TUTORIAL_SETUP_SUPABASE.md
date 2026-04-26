@@ -15,77 +15,83 @@ Estimasi waktu: **5–10 menit**.
 
 ---
 
-## 📌 BAGIAN 1 — Dapatkan Database Password
+## 📌 BAGIAN 1 — Dapatkan Database Password & Connection String
+
+> ⚠️ **UI Supabase berubah (2024+)**. Menu "Database" sudah TIDAK ADA di Project Settings.
+> Cara baru: pakai tombol **`Connect`** di header (paling cepat) atau menu **Database** di sidebar utama.
 
 ### Langkah 1.1 — Login ke Supabase
 
 1. Buka https://supabase.com/dashboard di browser
-2. Login pakai akun yang Anda pakai untuk buat project `mghlcwjazzltmykpqkks`
-3. Anda akan masuk ke **All projects** — klik project Anda
+2. Login dengan akun Anda
+3. Klik project `mghlcwjazzltmykpqkks` Anda
 
-### Langkah 1.2 — Buka Project Settings
+### Langkah 1.2 — Klik Tombol "Connect" di Header
 
-Di sidebar kiri (di dalam project), cari ikon **⚙️ Settings** (paling bawah).
-
-```
-[Home]
-[Table Editor]
-[SQL Editor]      ← nanti dipakai di Bagian 2
-[Database]
-[Auth]
-[Storage]
-...
-[⚙️ Project Settings]  ← KLIK INI
-```
-
-### Langkah 1.3 — Pilih "Database"
-
-Di halaman Settings, di sidebar kiri ada sub-menu:
+Di **pojok kanan-atas** halaman project (di header, sebelah ikon notifikasi & avatar), ada tombol hijau:
 
 ```
-General
-Database          ← KLIK INI
-API
-Auth
-Edge Functions
-Storage
-...
+                                            [🔌 Connect]  [🔔]  [Avatar]
+                                                ↑
+                                           KLIK INI
 ```
 
-### Langkah 1.4 — Cari Bagian "Database password"
+Modal akan terbuka.
 
-Scroll halaman, cari kotak **"Database password"**.
+### Langkah 1.3 — Pilih Tab "URI" / "Connection string"
 
-**Kondisi A: Anda masih ingat password yang Anda set saat create project**
-→ Lompat ke Langkah 1.5.
+Di modal, ada beberapa tab: **App Frameworks** | **ORMs** | **Mobile Frameworks** | **Direct connection** | **Transaction pooler** | **Session pooler**
 
-**Kondisi B: Anda LUPA password (atau belum pernah set)**
+Klik tab **`Transaction pooler`** (atau **`URI`** pada beberapa tampilan).
 
-1. Klik tombol **"Reset database password"**
-2. Masukkan password baru (catat dulu! tulis di Notepad)
-   - Saran: minimal 16 karakter, campur huruf-angka-simbol
-   - Contoh: `Dosi$Ob4t!2026Sup4base`
-3. Klik **"Reset password"**
-4. ⚠️ **Setelah reset**, koneksi yang sudah ada akan putus. Aman kalau Anda baru mulai.
-
-### Langkah 1.5 — Copy Connection String
-
-Masih di halaman **Database**, scroll ke bawah cari bagian **"Connection string"**.
-
-Ada 4 tab: `URI` | `PSQL` | `Golang` | `JDBC` | `.NET` — pilih tab **`URI`**.
-
-Di bawahnya ada 2 mode:
-- **Transaction pooler** ← yang ini dipakai untuk runtime app
-- **Session pooler** atau **Direct connection** ← untuk migrasi
-
-Tekan **"Show password"** atau **"Reveal password"** untuk munculkan password di string.
-
-Anda akan lihat string seperti ini (password sudah ter-substitusi otomatis):
+Anda akan lihat string seperti ini:
 ```
-postgresql://postgres.mghlcwjazzltmykpqkks:Dosi$Ob4t!2026Sup4base@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+postgresql://postgres.mghlcwjazzltmykpqkks:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
 ```
 
-**Catat dengan baik password yang muncul** — itu yang dipakai di langkah berikutnya.
+### Langkah 1.4 — Reset / Lihat Password
+
+Di modal yang sama, biasanya ada link **"Reset database password"** (klik kalau lupa) atau ikon mata 👁️ untuk reveal password.
+
+**Kondisi A — Anda ingat password yang Anda set saat create project:**
+→ Tinggal pakai password itu. Lompat ke Bagian 2.
+
+**Kondisi B — Anda LUPA password (atau belum pernah set):**
+
+1. Klik **"Reset database password"** di modal Connect
+   - ATAU buka via sidebar: **🗄️ Database** (di sidebar kiri, BUKAN dari Settings) → cari section "Database password" / "Settings" → tombol Reset
+2. Masukkan password baru — **CATAT di Notepad**:
+   - Saran: huruf + angka saja, hindari simbol aneh
+   - Contoh aman: `DosisObat2026Aman`
+3. Klik **Reset password**
+4. ⚠️ Reset akan memutuskan koneksi yang sudah ada. Aman kalau baru mulai.
+
+### Langkah 1.5 — Copy Kedua Connection String
+
+Anda butuh **2 string**:
+
+**A. Transaction pooler (port 6543)** — untuk `DATABASE_URL`:
+```
+postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+```
+
+**B. Session pooler ATAU Direct connection (port 5432)** — untuk `DIRECT_URL`:
+- Klik tab **Session pooler** atau **Direct connection** di modal Connect
+- Copy string tersebut
+
+```
+postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+```
+
+**Catat password Anda dengan baik** — dipakai di langkah berikutnya.
+
+### Alternatif: Lewat Sidebar "Database" (kalau tidak ketemu tombol Connect)
+
+1. Sidebar kiri (di luar Settings) → cari ikon **🗄️ Database** atau menu bertuliskan **Database**
+2. Halaman Database → cari sub-tab atau section:
+   - **Connection pooling** / **Connection string**
+   - **Settings** → bagian **Database password**
+3. Setelah ketemu, lakukan reset / copy string seperti di langkah 1.4–1.5
 
 ---
 
