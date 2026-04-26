@@ -31,7 +31,20 @@ Pisahkan database dan compute. Supabase untuk Postgres, Railway/Render untuk Fas
    DIRECT_URL=<direct URL>
    ```
 
-5. Apply migrasi & seed (sekali saja saat first deploy):
+5. Apply migrasi & seed — **2 cara**, pilih salah satu:
+
+   **Cara A — via Supabase SQL Editor (paling cepat, tanpa CLI)**
+
+   Buka Supabase Dashboard → SQL Editor → copy-paste 4 file ini berurutan, klik RUN tiap file:
+   1. `database/supabase/01_schema.sql`     → semua tabel + index + trigger
+   2. `database/supabase/02_seed_icd10.sql`  → 162 kode ICD-10
+   3. `database/supabase/03_seed_drugs.sql`  → 30 obat + sediaan
+   4. `database/supabase/04_seed_admin.sql`  → admin default (`admin@dosis.app` / `admin123`)
+
+   Detail di [`database/supabase/README.md`](../database/supabase/README.md).
+
+   **Cara B — via Prisma CLI (kalau Anda pakai Node.js dev)**
+
    ```bash
    cd backend
    npx prisma migrate deploy
