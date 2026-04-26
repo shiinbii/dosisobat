@@ -6,7 +6,52 @@ Panduan deploy 3 komponen: backend, admin web, dan mobile app.
 
 ## A. Backend + Database
 
-### Opsi 1: Railway (paling cepat, $5/bln)
+### Opsi 1: Supabase (DB) + Railway/Render (BE) — paling populer
+
+Pisahkan database dan compute. Supabase untuk Postgres, Railway/Render untuk Fastify backend.
+
+#### 1) Setup Supabase
+
+1. Buat akun di [supabase.com](https://supabase.com).
+2. **New project** — pilih region **Singapore** (ap-southeast-1) untuk latensi terendah dari Indonesia. Simpan password DB.
+3. Project Settings → Database → **Connection string** → ada 2 string yang dibutuhkan:
+
+   - **Transaction pooler** (port 6543) — runtime
+     ```
+     postgresql://postgres.xxxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+     ```
+   - **Direct connection** (port 5432) — untuk Prisma migrate
+     ```
+     postgresql://postgres.xxxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+     ```
+
+4. Isi env var di backend:
+   ```
+   DATABASE_URL=<transaction pooler URL>
+   DIRECT_URL=<direct URL>
+   ```
+
+5. Apply migrasi & seed (sekali saja saat first deploy):
+   ```bash
+   cd backend
+   npx prisma migrate deploy
+   npm run seed
+   ```
+
+6. (Opsional) Tabel bisa dilihat langsung di **Supabase Studio** (Table Editor) untuk debug data.
+
+#### Catatan Supabase Free Tier
+- 500 MB database, 2 GB transfer/bulan — cukup untuk MVP
+- **Auto-pause** setelah 7 hari idle. Bangunkan dengan request apa saja, atau upgrade ke Pro ($25/bln) supaya tidak pause
+- Backup harian baru di Pro plan; di Free tier backup manual via `pg_dump`
+
+#### 2) Deploy backend ke Railway / Render
+
+Lihat **Opsi 2** di bawah, tapi skip plugin Postgres (pakai Supabase) — cuma deploy backend dan set env-nya ke Supabase URL.
+
+---
+
+### Opsi 2: Railway (BE + DB sekaligus, $5/bln)
 
 1. Buat akun di [railway.app](https://railway.app), connect GitHub `shiinbii/dosisobat`.
 2. **New Project → Deploy from GitHub repo** → pilih repo, branch `main`, root `backend/`.
@@ -21,7 +66,7 @@ Panduan deploy 3 komponen: backend, admin web, dan mobile app.
    railway run npm run seed
    ```
 
-### Opsi 2: VPS (Docker, lebih murah jangka panjang)
+### Opsi 3: VPS (Docker, lebih murah jangka panjang)
 
 Spec minimal: 1 vCPU, 1 GB RAM, Ubuntu 22.04.
 
@@ -45,9 +90,9 @@ api.dosisobat.com {
 }
 ```
 
-### Opsi 3: Render
+### Opsi 4: Render
 
-Mirip Railway. Buat **Web Service** dari repo (root `backend/`), Build cmd `npm install && npx prisma generate && npm run build`, Start cmd `npx prisma migrate deploy && npm start`. Add Render Postgres add-on.
+Mirip Railway. Buat **Web Service** dari repo (root `backend/`), Build cmd `npm install && npx prisma generate && npm run build`, Start cmd `npx prisma migrate deploy && npm start`. Add Render Postgres add-on (atau pakai Supabase).
 
 ### Health check
 
