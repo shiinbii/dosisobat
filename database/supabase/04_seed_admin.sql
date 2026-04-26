@@ -1,20 +1,19 @@
 -- =============================================================
 -- Seed Admin User Default
--- Email:    admin@dosis.app
--- Password: admin123       (WAJIB GANTI setelah login pertama!)
 -- =============================================================
+-- 1 super_admin + 2 admin (semua password default: admin123)
+-- WAJIB GANTI password setelah login pertama!
 -- Password di-hash dengan bcrypt via pgcrypto (kompatibel dengan bcryptjs di backend).
--- Format hash: $2a$10$... — bisa diverifikasi oleh bcrypt.compare() di Node.js.
+--
+-- Role:
+--   super_admin → akses penuh, bisa kelola admin lain (di masa depan)
+--   admin       → akses CRUD obat & ICD-10 standar
 
 INSERT INTO "AdminUser" ("id", "email", "password", "name", "role", "isActive")
-VALUES (
-  'admin_default',
-  'admin@dosis.app',
-  crypt('admin123', gen_salt('bf', 10)),
-  'Default Admin',
-  'admin',
-  TRUE
-)
+VALUES
+  ('admin_default', 'admin@dosis.app',  crypt('admin123', gen_salt('bf', 10)), 'Super Admin', 'super_admin', TRUE),
+  ('admin_001',     'admin1@dosis.app', crypt('admin123', gen_salt('bf', 10)), 'Admin Satu',  'admin',       TRUE),
+  ('admin_002',     'admin2@dosis.app', crypt('admin123', gen_salt('bf', 10)), 'Admin Dua',   'admin',       TRUE)
 ON CONFLICT ("email") DO NOTHING;
 
 -- ===== CARA GANTI PASSWORD ADMIN VIA SQL =====
@@ -24,5 +23,11 @@ ON CONFLICT ("email") DO NOTHING;
 --       "updatedAt" = CURRENT_TIMESTAMP
 --   WHERE "email" = 'admin@dosis.app';
 
+-- ===== CARA UPGRADE/DOWNGRADE ROLE =====
+-- UPDATE "AdminUser" SET "role" = 'super_admin' WHERE "email" = '...';
+-- UPDATE "AdminUser" SET "role" = 'admin'       WHERE "email" = '...';
+
 -- Verifikasi
-SELECT "id", "email", "name", "role", "isActive", "createdAt" FROM "AdminUser";
+SELECT "id", "email", "name", "role", "isActive", "createdAt"
+FROM "AdminUser"
+ORDER BY "role" DESC, "email";

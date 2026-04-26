@@ -46,7 +46,7 @@ Klik tab **`Transaction pooler`** (atau **`URI`** pada beberapa tampilan).
 
 Anda akan lihat string seperti ini:
 ```
-postgresql://postgres.mghlcwjazzltmykpqkks:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+postgresql://postgres.mghlcwjazzltmykpqkks:[YOUR-PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres
 ```
 
 ### Langkah 1.4 — Reset / Lihat Password
@@ -72,7 +72,7 @@ Anda butuh **2 string**:
 
 **A. Transaction pooler (port 6543)** — untuk `DATABASE_URL`:
 ```
-postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres
 ```
 
 **B. Session pooler ATAU Direct connection (port 5432)** — untuk `DIRECT_URL`:
@@ -80,7 +80,7 @@ postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.poole
 - Copy string tersebut
 
 ```
-postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres
 ```
 
 **Catat password Anda dengan baik** — dipakai di langkah berikutnya.
@@ -110,8 +110,8 @@ D:\kerja\Dosis Obat Anak\dosis obat anak\backend\.env
 Anda akan lihat:
 
 ```env
-DATABASE_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+DATABASE_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
 ```
 
 ### Langkah 2.3 — Ganti `[PASSWORD]` dengan Password Asli
@@ -119,8 +119,8 @@ DIRECT_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-south
 Misalkan password Anda `Dosi$Ob4t!2026Sup4base`, hasilnya:
 
 ```env
-DATABASE_URL="postgresql://postgres.mghlcwjazzltmykpqkks:Dosi$Ob4t!2026Sup4base@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres.mghlcwjazzltmykpqkks:Dosi$Ob4t!2026Sup4base@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+DATABASE_URL="postgresql://postgres.mghlcwjazzltmykpqkks:Dosi$Ob4t!2026Sup4base@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.mghlcwjazzltmykpqkks:Dosi$Ob4t!2026Sup4base@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
 ```
 
 ⚠️ **PENTING tentang karakter spesial dalam password:**
@@ -292,7 +292,7 @@ Buka browser ke http://localhost:3000/health → harus muncul:
 
 ## 🔧 Troubleshooting
 
-### Error: `Can't reach database server at aws-0-ap-southeast-1.pooler.supabase.com`
+### Error: `Can't reach database server at aws-1-ap-northeast-1.pooler.supabase.com`
 
 **Penyebab umum:**
 1. Password salah → cek lagi password di Supabase Dashboard

@@ -5,7 +5,7 @@ Cara cepat setup database Supabase **tanpa CLI Prisma** — copy-paste 4 file SQ
 ## Project Info
 
 - **Project ID**: `mghlcwjazzltmykpqkks`
-- **Region**: Pilih **Singapore** (`ap-southeast-1`) saat buat project untuk latensi terendah dari Indonesia.
+- **Region**: `ap-northeast-1` (Tokyo) — region project yang sudah Anda buat. Latensi dari Indonesia ~50-80 ms (cukup baik).
 
 ## Cara Jalankan — pilih salah satu
 
@@ -68,8 +68,8 @@ Setelah database siap, set env var di backend:
 
 ```bash
 # backend/.env
-DATABASE_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+DATABASE_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.mghlcwjazzltmykpqkks:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
 JWT_SECRET="ganti-dengan-string-acak-min-32-karakter"
 PORT=3000
 NODE_ENV=production
@@ -80,7 +80,7 @@ ADMIN_PASSWORD="admin123"
 ADMIN_NAME="Default Admin"
 ```
 
-Ganti `[PASSWORD]` dengan database password Supabase Anda. Region `ap-southeast-1` mengikuti region project yang Anda pilih saat create.
+Ganti `[PASSWORD]` dengan database password Supabase Anda. Region `ap-northeast-1` (Tokyo) mengikuti region project yang sudah dibuat.
 
 > Connection string lengkap & terbaru: **Supabase Dashboard → Project Settings → Database → Connection string**.
 

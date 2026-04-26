@@ -13,16 +13,16 @@ Pisahkan database dan compute. Supabase untuk Postgres, Railway/Render untuk Fas
 #### 1) Setup Supabase
 
 1. Buat akun di [supabase.com](https://supabase.com).
-2. **New project** — pilih region **Singapore** (ap-southeast-1) untuk latensi terendah dari Indonesia. Simpan password DB.
+2. **New project** — pilih region terdekat (mis. **Singapore** `ap-southeast-1` atau **Tokyo** `ap-northeast-1`). Project Anda saat ini di Tokyo. Simpan password DB.
 3. Project Settings → Database → **Connection string** → ada 2 string yang dibutuhkan:
 
    - **Transaction pooler** (port 6543) — runtime
      ```
-     postgresql://postgres.xxxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+     postgresql://postgres.xxxx:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
      ```
    - **Direct connection** (port 5432) — untuk Prisma migrate
      ```
-     postgresql://postgres.xxxx:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+     postgresql://postgres.xxxx:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres
      ```
 
 4. Isi env var di backend:
