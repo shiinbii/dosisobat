@@ -1,0 +1,209 @@
+// Prisma schema for Dosis Obat backend
+// docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// End-user account (mobile app)
+// ============================================================
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  emailLower  String   @unique
+  password    String   // bcrypt hash
+  name        String
+  // "DOKTER", "APOTEKER", "PERAWAT", "BIDAN", "MAHASISWA", "LAINNYA"
+  profession  String   @default("LAINNYA")
+
+  // Trial & subscription
+  trialEndsAt DateTime              // = createdAt + 14 days
+  subscriptions Subscription[]
+
+  // Single-device enforcement: id of the currently-active Session row.
+  // When user logs in on another device, this is updated and old session is
+  // marked revoked; old device gets 401 on next request.
+  currentSessionId String? @unique
+
+  isActive        Boolean @default(true)
+  isEmailVerified Boolean @default(false)
+
+  sessions    Session[] @relation("UserSessions")
+  histories   PatientHistory[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([emailLower])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  // JWT token id (jti) — JWT itself carries this id and is verified by signature.
+  // We DO NOT store the raw JWT.
+  jti         String   @unique
+  deviceId    String   // client-generated UUID, stored in SecureStore on device
+  deviceName  String?  // "Samsung Galaxy A52", "iPhone 13"
+  platform    String   // "ios" | "android" | "web"
+
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  revokeReason String? // "REPLACED_BY_NEW_LOGIN" | "USER_LOGOUT" | "ADMIN_REVOKE"
+
+  @@index([userId])
+  @@index([deviceId])
+}
+
+// ============================================================
+// Subscription
+// ============================================================
+
+model Subscription {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // "TRIAL" | "ACTIVE" | "EXPIRED" | "CANCELLED"
+  status      String
+  // "MONTHLY" | "YEARLY" | "TRIAL"
+  plan        String
+  startsAt    DateTime @default(now())
+  endsAt      DateTime
+  // For future payment integration
+  paymentProvider String? // "GOOGLE_PLAY" | "APPLE_IAP" | "MIDTRANS" | null
+  externalRef String? // provider's transaction/subscription id
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status, endsAt])
+}
+
+// ============================================================
+// Patient calculation history (server-side backup; primary copy is on device)
+// Optional: if user wants to sync history across devices, this stores it.
+// Key by user + patient identifier (name + DOB) hashed.
+// ============================================================
+
+model PatientHistory {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientName   String
+  patientDob    DateTime  // date only
+  drugId        String
+  drugNameSnap  String   // snapshot of drug name at calc time
+  doseType      String   // "PEDIATRIC" | "ADULT"
+  weightKg      Float?
+  perDoseMg     Float
+  perDayMg      Float
+  freqPerDay    Int
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, patientName, patientDob])
+}
+
+// ============================================================
+// Drug catalog
+// ============================================================
+
+model Drug {
+  id          String   @id @default(cuid())
+  name        String
+  nameLower   String   @unique
+  brandNames  String   @default("") // CSV: "Panadol, Sanmol, Tempra"
+  category    String   // antibiotik, analgesik, antipiretik, ...
+  // CSV of: ORAL, INJECTION, TOPICAL, INHALATION, RECTAL, OPHTHALMIC, OTIC, NASAL
+  routes      String
+
+  composition       String?
+  indication        String?
+  contraindication  String?
+  sideEffects       String?
+  warning           String?
+
+  // Pediatric dose
+  pediMgPerKgDose  Float?
+  pediMgPerKgDay   Float?
+  pediMaxPerDose   Float?
+  pediMaxPerDay    Float?
+  pediFreqPerDay   Int?
+  pediMinAgeMonths Int?
+  pediNotes        String?
+
+  // Adult dose
+  adultDoseMin     Float?
+  adultDoseMax     Float?
+  adultMaxPerDay   Float?
+  adultFreqPerDay  Int?
+  adultNotes       String?
+
+  forms       DrugForm[]
+
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([nameLower])
+  @@index([category])
+}
+
+model DrugForm {
+  id        String  @id @default(cuid())
+  drugId    String
+  drug      Drug    @relation(fields: [drugId], references: [id], onDelete: Cascade)
+  // TABLET, CAPSULE, SYRUP, SUSPENSION, DROPS, INJECTION, OINTMENT, CREAM, GEL, SUPPOSITORY, INHALER
+  type      String
+  strength  String   // display: "500 mg", "125 mg / 5 ml"
+  amountMg  Float?   // numeric for calculation
+  perMl     Float?   // for liquids; null for solids
+  packaging String?
+
+  @@index([drugId])
+}
+
+// ============================================================
+// ICD-10 catalog
+// ============================================================
+
+model Icd10 {
+  code          String   @id    // "J00", "A09.9"
+  description   String
+  descriptionId String?
+  category      String?
+  isActive      Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@index([category])
+}
+
+// ============================================================
+// Admin user (admin web only)
+// ============================================================
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // bcrypt hash
+  name      String
+  role      String   @default("admin")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

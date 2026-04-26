@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+.next/
+out/
+.expo/
+.expo-shared/
+android/
+ios/
+web-build/
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Prisma
+*.db
+*.db-journal
+
+# Mobile
+*.jks
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Testing
+coverage/
+
+# Java scaffold (legacy IntelliJ)
+target/
+dosis obat anak.iml
+src/Main.java
+out/
+
+# Claude Code local settings
+.claude/settings.local.json
