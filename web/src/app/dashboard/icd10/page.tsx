@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { adminApi } from '@/lib/api';
 
 type Code = { code: string; description: string; descriptionId: string | null; category: string | null; isActive: boolean };
@@ -13,11 +14,21 @@ export default function Icd10Page() {
   const [editing, setEditing] = useState<Code | null>(null);
 
   const load = async () => {
-    const r = await adminApi<{ items: Code[] }>('/admin/icd10');
-    setItems(r.items);
+    const { data, error } = await supabase
+      .from('Icd10')
+      .select('code, description, descriptionId, category, isActive')
+      .order('code', { ascending: true });
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setItems((data ?? []) as Code[]);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
+  // CRUD masih via backend lama — diganti ke Server Action di Fase 4.
   const save = async () => {
     if (!editing) return;
     await adminApi('/admin/icd10', { method: 'POST', body: editing });

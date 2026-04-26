@@ -52,7 +52,7 @@ export default function ProfileScreen() {
       <View style={styles.box}>
         <Text style={styles.boxTitle}>Perangkat</Text>
         <Text style={styles.line}>
-          Akun ini hanya boleh aktif di 1 perangkat. Login di perangkat lain akan otomatis logout perangkat ini.
+          Login di perangkat lain akan otomatis logout perangkat ini (single-active-device).
         </Text>
       </View>
 

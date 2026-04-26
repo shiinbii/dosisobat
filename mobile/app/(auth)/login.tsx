@@ -6,12 +6,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../lib/auth-store';
-import { ApiError } from '../../lib/api';
 import { colors, space, fontSize, radius } from '../../lib/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, conflictDeviceName } = useAuthStore();
+  const { login } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -20,19 +19,18 @@ export default function LoginScreen() {
     if (!email || !password) return;
     setBusy(true);
     try {
-      const res = await login(email.trim(), password);
-      if (res.conflict) {
-        // navigate to force-takeover screen
-        router.push('/(auth)/force-takeover');
-      }
-      // On success, _layout effect will route to (app)
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'INVALID_CREDENTIALS') {
+      await login(email.trim(), password);
+      // onAuthStateChange di store + effect di _layout akan handle redirect ke (app)
+    } catch (err: any) {
+      const msg = err?.message ?? '';
+      if (/invalid login credentials|invalid_credentials/i.test(msg)) {
         Alert.alert('Login gagal', 'Email atau password salah.');
-      } else if (err instanceof ApiError) {
-        Alert.alert('Error', err.message);
-      } else {
+      } else if (/email not confirmed/i.test(msg)) {
+        Alert.alert('Email belum dikonfirmasi', 'Cek email konfirmasi dari Supabase.');
+      } else if (/network|fetch/i.test(msg)) {
         Alert.alert('Error', 'Tidak dapat terhubung ke server.');
+      } else {
+        Alert.alert('Error', msg || 'Terjadi kesalahan.');
       }
     } finally {
       setBusy(false);
@@ -79,14 +77,6 @@ export default function LoginScreen() {
               Belum punya akun? <Text style={{ fontWeight: 'bold' }}>Daftar</Text>
             </Text>
           </Pressable>
-
-          {conflictDeviceName && (
-            <View style={styles.warning}>
-              <Text style={styles.warningText}>
-                Akun ini sedang aktif di {conflictDeviceName}.
-              </Text>
-            </View>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -110,8 +100,4 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5 },
   btnText: { color: '#fff', fontSize: fontSize.lg, fontWeight: '600' },
-  warning: {
-    marginTop: space.xl, padding: space.md, backgroundColor: colors.badge, borderRadius: radius.md,
-  },
-  warningText: { color: colors.warning, fontSize: fontSize.sm },
 });

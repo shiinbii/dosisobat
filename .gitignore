@@ -13,6 +13,7 @@ out/
 android/
 ios/
 web-build/
+*.tsbuildinfo
 
 # Env
 .env

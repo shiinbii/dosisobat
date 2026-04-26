@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApi, adminToken, AdminApiError } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,7 +12,9 @@ export default function LoginPage() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (adminToken.get()) router.replace('/dashboard');
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace('/dashboard');
+    });
   }, [router]);
 
   const submit = async (e: React.FormEvent) => {
@@ -20,15 +22,40 @@ export default function LoginPage() {
     setBusy(true);
     setErr(null);
     try {
-      const r = await adminApi<{ token: string }>('/admin/login', {
-        method: 'POST', auth: false, body: { email, password },
+      const { data: signIn, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
       });
-      adminToken.set(r.token);
+      if (signInErr) {
+        setErr(/invalid login credentials|invalid_credentials/i.test(signInErr.message)
+          ? 'Email atau password salah.'
+          : signInErr.message);
+        return;
+      }
+      const userId = signIn.user?.id;
+      if (!userId) {
+        setErr('Login berhasil tapi user kosong. Hubungi admin.');
+        return;
+      }
+      const { data: role, error: roleErr } = await supabase
+        .from('admin_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (roleErr) {
+        await supabase.auth.signOut();
+        setErr('Gagal memeriksa role admin.');
+        return;
+      }
+      if (!role) {
+        await supabase.auth.signOut();
+        setErr('Akun ini bukan admin.');
+        return;
+      }
       router.push('/dashboard');
-    } catch (e) {
-      setErr(e instanceof AdminApiError && e.code === 'INVALID_CREDENTIALS'
-        ? 'Email atau password salah.'
-        : 'Login gagal.');
+      router.refresh();
+    } catch (e: any) {
+      setErr(e?.message ?? 'Login gagal.');
     } finally {
       setBusy(false);
     }
@@ -43,6 +70,7 @@ export default function LoginPage() {
           <input
             type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
             className="mt-1 w-full border border-stone-300 rounded px-3 py-2"
+            autoComplete="email"
           />
         </div>
         <div>
@@ -50,6 +78,7 @@ export default function LoginPage() {
           <input
             type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
             className="mt-1 w-full border border-stone-300 rounded px-3 py-2"
+            autoComplete="current-password"
           />
         </div>
         {err && <p className="text-sm text-red-600">{err}</p>}

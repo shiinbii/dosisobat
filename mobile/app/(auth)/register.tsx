@@ -3,7 +3,6 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore, type Profession } from '../../lib/auth-store';
-import { ApiError } from '../../lib/api';
 import { colors, space, fontSize, radius } from '../../lib/theme';
 
 const PROFESSIONS: { value: Profession; label: string }[] = [
@@ -36,15 +35,24 @@ export default function RegisterScreen() {
     setBusy(true);
     try {
       await register({ email: email.trim(), password, name: name.trim(), profession });
-      // auto-login
-      await login(email.trim(), password);
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'EMAIL_TAKEN') {
+      // Auto-login. Kalau email confirmation aktif di Supabase, signIn akan gagal sampai user verifikasi email.
+      try {
+        await login(email.trim(), password);
+      } catch (loginErr: any) {
+        Alert.alert(
+          'Akun dibuat',
+          'Cek email Anda untuk konfirmasi (jika diaktifkan), lalu login. Trial 14 hari aktif.'
+        );
+        router.replace('/(auth)/login');
+      }
+    } catch (err: any) {
+      const msg = err?.message ?? '';
+      if (/already registered|user already|email.*exist/i.test(msg)) {
         Alert.alert('Pendaftaran gagal', 'Email sudah terdaftar.');
-      } else if (err instanceof ApiError) {
-        Alert.alert('Error', err.message);
-      } else {
+      } else if (/network|fetch/i.test(msg)) {
         Alert.alert('Error', 'Tidak dapat terhubung ke server.');
+      } else {
+        Alert.alert('Error', msg || 'Terjadi kesalahan.');
       }
     } finally {
       setBusy(false);

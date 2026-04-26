@@ -13,7 +13,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const { ready, user, init } = useAuthStore();
+  const { ready, session, init } = useAuthStore();
   const [disclaimerAccepted, setDisclaimerAccepted] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -35,15 +35,15 @@ export default function RootLayout() {
       router.replace('/disclaimer');
       return;
     }
-    if (disclaimerAccepted && !user && !inAuth) {
+    if (disclaimerAccepted && !session && !inAuth) {
       router.replace('/(auth)/login');
       return;
     }
-    if (disclaimerAccepted && user && (inAuth || onDisclaimer)) {
+    if (disclaimerAccepted && session && (inAuth || onDisclaimer)) {
       router.replace('/(app)');
       return;
     }
-  }, [ready, user, segments, disclaimerAccepted]);
+  }, [ready, session, segments, disclaimerAccepted]);
 
   if (!ready || disclaimerAccepted === null) {
     return (

@@ -1,48 +1,78 @@
-import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { flagStorage, FLAG_LAST_SYNC_AT, FLAG_CATALOG_VERSION } from '../lib/storage';
 import { getDb } from './client';
 
-type DrugSyncResp = {
+type DrugWithForms = {
+  id: string;
+  name: string;
+  nameLower: string;
+  brandNames: string;
+  category: string;
+  routes: string;
+  composition: string | null;
+  indication: string | null;
+  contraindication: string | null;
+  sideEffects: string | null;
+  warning: string | null;
+  pediMgPerKgDose: number | null;
+  pediMgPerKgDay: number | null;
+  pediMaxPerDose: number | null;
+  pediMaxPerDay: number | null;
+  pediFreqPerDay: number | null;
+  pediMinAgeMonths: number | null;
+  pediNotes: string | null;
+  adultDoseMin: number | null;
+  adultDoseMax: number | null;
+  adultMaxPerDay: number | null;
+  adultFreqPerDay: number | null;
+  adultNotes: string | null;
   version: number;
-  count: number;
-  generatedAt: string;
-  items: Array<{
-    id: string; name: string; nameLower: string; brandNames: string;
-    category: string; routes: string;
-    composition: string | null; indication: string | null;
-    contraindication: string | null; sideEffects: string | null;
-    warning: string | null;
-    pediMgPerKgDose: number | null; pediMgPerKgDay: number | null;
-    pediMaxPerDose: number | null; pediMaxPerDay: number | null;
-    pediFreqPerDay: number | null; pediMinAgeMonths: number | null;
-    pediNotes: string | null;
-    adultDoseMin: number | null; adultDoseMax: number | null;
-    adultMaxPerDay: number | null; adultFreqPerDay: number | null;
-    adultNotes: string | null;
-    version: number;
-    forms: Array<{
-      id: string; type: string; strength: string;
-      amountMg: number | null; perMl: number | null; packaging: string | null;
-    }>;
+  isActive: boolean;
+  DrugForm: Array<{
+    id: string;
+    drugId: string;
+    type: string;
+    strength: string;
+    amountMg: number | null;
+    perMl: number | null;
+    packaging: string | null;
   }>;
 };
 
-type Icd10SyncResp = {
-  count: number;
-  items: Array<{ code: string; description: string; descriptionId: string | null; category: string | null }>;
+type Icd10Row = {
+  code: string;
+  description: string;
+  descriptionId: string | null;
+  category: string | null;
+  isActive: boolean;
 };
 
 export async function syncCatalog(): Promise<{ drugs: number; icd10: number }> {
   const db = await getDb();
 
-  const [drugs, icd] = await Promise.all([
-    api<DrugSyncResp>('/drugs/sync'),
-    api<Icd10SyncResp>('/icd10/sync'),
+  const [drugsRes, icdRes] = await Promise.all([
+    supabase
+      .from('Drug')
+      .select('*, DrugForm(*)')
+      .eq('isActive', true)
+      .order('nameLower', { ascending: true }),
+    supabase
+      .from('Icd10')
+      .select('code, description, descriptionId, category, isActive')
+      .eq('isActive', true)
+      .order('code', { ascending: true }),
   ]);
+
+  if (drugsRes.error) throw drugsRes.error;
+  if (icdRes.error) throw icdRes.error;
+
+  const drugs = (drugsRes.data ?? []) as DrugWithForms[];
+  const icd10 = (icdRes.data ?? []) as Icd10Row[];
+  const catalogVersion = drugs.reduce((max, d) => Math.max(max, d.version ?? 0), 0);
 
   await db.withExclusiveTransactionAsync(async (tx) => {
     await tx.execAsync('DELETE FROM drug_form; DELETE FROM drug;');
-    for (const d of drugs.items) {
+    for (const d of drugs) {
       await tx.runAsync(
         `INSERT INTO drug (id, name, nameLower, brandNames, category, routes,
           composition, indication, contraindication, sideEffects, warning,
@@ -60,7 +90,7 @@ export async function syncCatalog(): Promise<{ drugs: number; icd10: number }> {
           d.version,
         ]
       );
-      for (const f of d.forms) {
+      for (const f of d.DrugForm ?? []) {
         await tx.runAsync(
           `INSERT INTO drug_form (id, drugId, type, strength, amountMg, perMl, packaging)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -70,7 +100,7 @@ export async function syncCatalog(): Promise<{ drugs: number; icd10: number }> {
     }
 
     await tx.execAsync('DELETE FROM icd10;');
-    for (const c of icd.items) {
+    for (const c of icd10) {
       await tx.runAsync(
         `INSERT INTO icd10 (code, description, descriptionId, category) VALUES (?, ?, ?, ?)`,
         [c.code, c.description, c.descriptionId, c.category]
@@ -79,9 +109,9 @@ export async function syncCatalog(): Promise<{ drugs: number; icd10: number }> {
   });
 
   await flagStorage.set(FLAG_LAST_SYNC_AT, new Date().toISOString());
-  await flagStorage.set(FLAG_CATALOG_VERSION, String(drugs.version));
+  await flagStorage.set(FLAG_CATALOG_VERSION, String(catalogVersion));
 
-  return { drugs: drugs.count, icd10: icd.count };
+  return { drugs: drugs.length, icd10: icd10.length };
 }
 
 export type LocalDrug = {
@@ -114,7 +144,6 @@ export async function searchDrugs(opts: { q?: string; route?: string; limit?: nu
     `SELECT * FROM drug ${where} ORDER BY nameLower ASC LIMIT ${limit}`,
     params
   );
-  // batch load forms
   const ids = rows.map((r) => r.id);
   let formRows: any[] = [];
   if (ids.length) {

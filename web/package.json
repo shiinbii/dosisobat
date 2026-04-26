@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
-    "build": "next build",
-    "start": "next start -p 3001",
-    "lint": "next lint"
+    "dev": "npx next dev -p 3001",
+    "build": "npx next build",
+    "start": "npx next start -p 3001",
+    "lint": "npx next lint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.104.1",
     "next": "14.2.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

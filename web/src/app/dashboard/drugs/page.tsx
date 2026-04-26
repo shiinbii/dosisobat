@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import { adminApi } from '@/lib/api';
 
 type Drug = { id: string; name: string; brandNames: string; category: string; routes: string; isActive: boolean };
@@ -14,16 +15,26 @@ export default function DrugsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await adminApi<{ items: Drug[] }>('/admin/drugs');
-      setDrugs(r.items);
-    } finally { setLoading(false); }
+      const { data, error } = await supabase
+        .from('Drug')
+        .select('id, name, brandNames, category, routes, isActive')
+        .eq('isActive', true)
+        .order('nameLower', { ascending: true });
+      if (error) throw error;
+      setDrugs((data ?? []) as Drug[]);
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const filtered = drugs.filter((d) =>
     !q || d.name.toLowerCase().includes(q.toLowerCase()) || d.brandNames.toLowerCase().includes(q.toLowerCase())
   );
 
+  // CRUD masih via backend lama — akan diganti ke Server Action di Fase 4.
   const remove = async (id: string) => {
     if (!confirm('Nonaktifkan obat ini?')) return;
     await adminApi(`/admin/drugs/${id}`, { method: 'DELETE' });

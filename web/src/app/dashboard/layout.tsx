@@ -1,20 +1,49 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { adminToken } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!adminToken.get()) router.replace('/');
+    let mounted = true;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      if (!data.session) {
+        router.replace('/');
+        return;
+      }
+      // Cek apakah user ini admin
+      const { data: role } = await supabase
+        .from('admin_roles')
+        .select('role')
+        .eq('user_id', data.session.user.id)
+        .maybeSingle();
+      if (!role) {
+        await supabase.auth.signOut();
+        router.replace('/');
+        return;
+      }
+      setReady(true);
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (!session) router.replace('/');
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, [router]);
 
-  const logout = () => {
-    adminToken.remove();
+  const logout = async () => {
+    await supabase.auth.signOut();
     router.replace('/');
   };
 
@@ -23,6 +52,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       pathname === path || pathname.startsWith(path + '/')
         ? 'bg-primary text-white' : 'text-stone-700 hover:bg-stone-200'
     }`;
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-stone-500">Memuat…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
