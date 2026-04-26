@@ -2,8 +2,14 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { useAuthStore, type Profession } from '../../lib/auth-store';
+import { supabase } from '../../lib/supabase';
+import { normalizeIdPhone } from '../../lib/auth-helpers';
 import { colors, space, fontSize, radius } from '../../lib/theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const PROFESSIONS: { value: Profession; label: string }[] = [
   { value: 'DOKTER', label: 'Dokter' },
@@ -16,35 +22,40 @@ const PROFESSIONS: { value: Profession; label: string }[] = [
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, login } = useAuthStore();
+  const { register } = useAuthStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [profession, setProfession] = useState<Profession>('DOKTER');
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   const submit = async () => {
-    if (!email || !password || !name) {
-      Alert.alert('Error', 'Lengkapi semua field.');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password minimal 6 karakter.');
-      return;
-    }
+    if (!name.trim()) return Alert.alert('Lengkapi', 'Nama wajib diisi.');
+    if (!email.trim()) return Alert.alert('Lengkapi', 'Email wajib diisi.');
+    if (!email.includes('@')) return Alert.alert('Format salah', 'Email tidak valid.');
+    if (!phone.trim()) return Alert.alert('Lengkapi', 'Nomor HP wajib diisi.');
+    const phoneE164 = normalizeIdPhone(phone);
+    if (!phoneE164) return Alert.alert('Format salah', 'Nomor HP tidak valid (contoh: 08123456789).');
+    if (password.length < 6) return Alert.alert('Password lemah', 'Password minimal 6 karakter.');
+    if (password !== password2) return Alert.alert('Tidak cocok', 'Konfirmasi password tidak sama.');
+
     setBusy(true);
     try {
-      await register({ email: email.trim(), password, name: name.trim(), profession });
-      // Auto-login. Kalau email confirmation aktif di Supabase, signIn akan gagal sampai user verifikasi email.
-      try {
-        await login(email.trim(), password);
-      } catch (loginErr: any) {
-        Alert.alert(
-          'Akun dibuat',
-          'Cek email Anda untuk konfirmasi (jika diaktifkan), lalu login. Trial 14 hari aktif.'
-        );
-        router.replace('/(auth)/login');
-      }
+      await register({
+        email: email.trim(),
+        password,
+        name: name.trim(),
+        profession,
+        phone: phoneE164,
+      });
+      Alert.alert(
+        'Akun dibuat',
+        'Cek email Anda untuk konfirmasi (jika diaktifkan), lalu login. Trial 14 hari aktif setelah login pertama.',
+        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
+      );
     } catch (err: any) {
       const msg = err?.message ?? '';
       if (/already registered|user already|email.*exist/i.test(msg)) {
@@ -59,6 +70,45 @@ export default function RegisterScreen() {
     }
   };
 
+  const registerWithGoogle = async () => {
+    setGoogleBusy(true);
+    try {
+      const redirectTo = Linking.createURL('/(auth)/complete-profile');
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error('Tidak ada URL OAuth.');
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type !== 'success' || !result.url) return;
+
+      const url = new URL(result.url);
+      const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash;
+      const params = new URLSearchParams(hash);
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+      if (access_token && refresh_token) {
+        const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (setErr) throw setErr;
+        // _layout akan deteksi profile.phone null → arahkan ke complete-profile
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? '';
+      if (/provider.*not.*enabled|unsupported.*provider/i.test(msg)) {
+        Alert.alert(
+          'Google login belum aktif',
+          'Admin perlu mengaktifkan Google Provider di Supabase Dashboard.'
+        );
+      } else {
+        Alert.alert('Daftar Google gagal', msg || 'Coba lagi.');
+      }
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -69,8 +119,19 @@ export default function RegisterScreen() {
         <Text style={styles.title}>Daftar Akun Baru</Text>
         <Text style={styles.subtitle}>Free trial 14 hari, langganan setelahnya.</Text>
 
+        <Pressable onPress={registerWithGoogle} style={[styles.googleBtn, googleBusy && { opacity: 0.5 }]} disabled={googleBusy}>
+          <Text style={styles.googleIcon}>G</Text>
+          <Text style={styles.googleText}>{googleBusy ? 'Memuat…' : 'Daftar dengan Google'}</Text>
+        </Pressable>
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>atau daftar manual</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
         <View style={styles.field}>
-          <Text style={styles.label}>Nama</Text>
+          <Text style={styles.label}>Nama lengkap</Text>
           <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={colors.textMuted} />
         </View>
 
@@ -82,6 +143,19 @@ export default function RegisterScreen() {
             keyboardType="email-address"
             value={email}
             onChangeText={setEmail}
+            placeholder="nama@email.com"
+            placeholderTextColor={colors.textMuted}
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Nomor HP</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="phone-pad"
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="08123456789"
             placeholderTextColor={colors.textMuted}
           />
         </View>
@@ -89,6 +163,11 @@ export default function RegisterScreen() {
         <View style={styles.field}>
           <Text style={styles.label}>Password (min 6 karakter)</Text>
           <TextInput style={styles.input} secureTextEntry value={password} onChangeText={setPassword} />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Konfirmasi password</Text>
+          <TextInput style={styles.input} secureTextEntry value={password2} onChangeText={setPassword2} />
         </View>
 
         <View style={styles.field}>
@@ -140,4 +219,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md, alignItems: 'center',
   },
   btnText: { color: '#fff', fontSize: fontSize.lg, fontWeight: '600' },
+  googleBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: space.md, backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border,
+    padding: space.lg, borderRadius: radius.md, marginBottom: space.lg,
+  },
+  googleIcon: { fontSize: 20, fontWeight: '900', color: '#4285F4' },
+  googleText: { color: colors.text, fontSize: fontSize.md, fontWeight: '600' },
+  divider: { flexDirection: 'row', alignItems: 'center', marginBottom: space.lg },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { paddingHorizontal: space.md, color: colors.textMuted, fontSize: fontSize.sm },
 });

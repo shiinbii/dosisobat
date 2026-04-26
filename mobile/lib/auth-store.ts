@@ -10,6 +10,7 @@ export type CurrentUser = {
   email: string;
   name: string;
   profession: Profession;
+  phone: string | null;
   trialEndsAt: string | null;
 };
 
@@ -24,6 +25,7 @@ type ProfileRow = {
   id: string;
   name: string;
   profession: Profession;
+  phone: string | null;
   current_device_id: string | null;
   trial_ends_at: string | null;
 };
@@ -45,7 +47,7 @@ type State = {
   forceLogoutReason: string | null;
 
   init: () => Promise<void>;
-  register: (data: { email: string; password: string; name: string; profession: Profession }) => Promise<void>;
+  register: (data: { email: string; password: string; name: string; profession: Profession; phone?: string }) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
@@ -107,6 +109,7 @@ function buildUser(session: Session, profile: ProfileRow | null): CurrentUser {
     email: session.user.email ?? '',
     name: profile?.name ?? meta.name ?? '',
     profession: (profile?.profession ?? (meta.profession as Profession) ?? 'LAINNYA') as Profession,
+    phone: profile?.phone ?? null,
     trialEndsAt: profile?.trial_ends_at ?? null,
   };
 }
@@ -241,12 +244,12 @@ export const useAuthStore = create<State>((set, get) => ({
     });
   },
 
-  async register({ email, password, name, profession }) {
+  async register({ email, password, name, profession, phone }) {
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        data: { name: name.trim(), profession },
+        data: { name: name.trim(), profession, phone: phone?.trim() ?? '' },
       },
     });
     if (error) throw error;

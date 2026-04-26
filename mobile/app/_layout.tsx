@@ -13,7 +13,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const { ready, session, init } = useAuthStore();
+  const { ready, session, user, init } = useAuthStore();
   const [disclaimerAccepted, setDisclaimerAccepted] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -35,15 +35,22 @@ export default function RootLayout() {
       router.replace('/disclaimer');
       return;
     }
-    // Logged-in user di halaman auth/disclaimer → masuk app.
-    if (disclaimerAccepted && session && (inAuth || onDisclaimer)) {
+    // Logged-in user yang profilnya belum lengkap (mis. baru daftar via Google
+    // tanpa nomor HP) → arahkan ke complete-profile.
+    const onCompleteProfile = segments.join('/').includes('complete-profile');
+    if (disclaimerAccepted && session && user && !user.phone && !onCompleteProfile) {
+      router.replace('/(auth)/complete-profile');
+      return;
+    }
+    // Logged-in user dengan profil lengkap di halaman auth/disclaimer → masuk app.
+    if (disclaimerAccepted && session && user?.phone && (inAuth || onDisclaimer)) {
       router.replace('/(app)');
       return;
     }
     // Unauthenticated user TIDAK dipaksa ke login. Bisa lihat home,
     // tapi tiap fitur akan redirect sendiri ke login lewat useFocusEffect /
     // onPress handler di screen masing-masing.
-  }, [ready, session, segments, disclaimerAccepted]);
+  }, [ready, session, user, segments, disclaimerAccepted]);
 
   if (!ready || disclaimerAccepted === null) {
     return (
