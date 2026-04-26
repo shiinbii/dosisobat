@@ -4,8 +4,9 @@ Expo (React Native) + TypeScript + expo-router + expo-sqlite (offline cache).
 
 ## Run dev
 
+`.env` sudah dibuat — edit `EXPO_PUBLIC_API_URL` kalau backend Anda di host lain.
+
 ```bash
-cp .env.example .env       # set EXPO_PUBLIC_API_URL to your backend
 npm install
 npx expo start             # scan QR with Expo Go, or press a/i for emulator
 ```

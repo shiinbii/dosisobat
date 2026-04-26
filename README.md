@@ -30,34 +30,36 @@ Aplikasi ini adalah **alat bantu**, bukan pengganti penilaian klinis dokter / ap
 
 Prasyarat: Node 20+, pnpm/npm, Docker Desktop, Android Studio (untuk emulator), Expo Go (untuk test di HP).
 
-### 1. Backend + Database
+> File `.env` untuk backend/admin/mobile **sudah dibuat** di masing-masing folder. Cukup edit kalau perlu (mis. ganti `[PASSWORD]` di `backend/.env` dengan DB password Supabase Anda).
+
+### 1. Database (Supabase)
+
+Pilih salah satu cara setup:
+- **Cara cepat (no-CLI)**: copy-paste 4 file di `database/supabase/*.sql` ke Supabase SQL Editor — atau pakai 1 file all-in-one `database/supabase/00_all_in_one.sql`. Detail: [`database/supabase/README.md`](database/supabase/README.md).
+- **Cara Prisma**: `cd backend && npm install && npx prisma migrate deploy && npm run seed`
+
+### 2. Backend
 
 ```bash
 cd backend
-cp .env.example .env
-docker compose up -d            # menjalankan postgres
 npm install
-npx prisma migrate dev          # buat tabel
-npm run seed                    # isi ~30 obat + ~200 ICD-10
 npm run dev                     # http://localhost:3000
 ```
 
-### 2. Admin Panel
+### 3. Admin Panel
 
 ```bash
 cd admin
-cp .env.example .env.local
 npm install
 npm run dev                     # http://localhost:3001
 ```
 
-Login default admin (lihat seed): `admin@dosis.app` / `admin123` — **WAJIB ganti sebelum produksi**.
+Login default admin: `admin@dosis.app` / `admin123` — **WAJIB ganti sebelum produksi**.
 
-### 3. Mobile App
+### 4. Mobile App
 
 ```bash
 cd mobile
-cp .env.example .env
 npm install
 npx expo start
 ```

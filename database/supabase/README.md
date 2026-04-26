@@ -7,23 +7,33 @@ Cara cepat setup database Supabase **tanpa CLI Prisma** — copy-paste 4 file SQ
 - **Project ID**: `mghlcwjazzltmykpqkks`
 - **Region**: Pilih **Singapore** (`ap-southeast-1`) saat buat project untuk latensi terendah dari Indonesia.
 
-## Cara Jalankan
+## Cara Jalankan — pilih salah satu
 
-1. Buka [Supabase Dashboard](https://supabase.com/dashboard) → project Anda → **SQL Editor**.
-2. Klik **+ New query**.
-3. Copy-paste isi file di urutan ini, lalu klik **RUN** (atau Ctrl+Enter):
+### 🚀 Opsi A: All-in-one (1 file, paling cepat)
+
+1. Buka [Supabase Dashboard](https://supabase.com/dashboard) → project Anda → **SQL Editor**
+2. Klik **+ New query**
+3. Buka file `00_all_in_one.sql` → copy seluruh isinya → paste ke editor
+4. Klik **RUN** (atau `Ctrl+Enter`)
+5. Tunggu ~3–5 detik, hasil verifikasi muncul di bawah
+
+### 📋 Opsi B: Step-by-step (4 file)
+
+Cocok kalau Anda mau lihat per-bagian / debug kalau ada error.
+
+1. Buka **SQL Editor** → **+ New query**
+2. Copy-paste **isi file** di urutan ini, klik **RUN** tiap file:
 
    | # | File | Isi | Lama eksekusi |
    |---|---|---|---|
-   | 1 | `01_schema.sql` | Tabel + index + trigger | ~1 detik |
+   | 1 | `01_schema.sql` | Tabel + index + trigger updatedAt | ~1 detik |
    | 2 | `02_seed_icd10.sql` | 162 kode ICD-10 | ~1 detik |
-   | 3 | `03_seed_drugs.sql` | 30 obat + sediaan | ~2 detik |
+   | 3 | `03_seed_drugs.sql` | 30 obat + 89 sediaan | ~2 detik |
    | 4 | `04_seed_admin.sql` | User admin default | < 1 detik |
 
-4. Setelah selesai, cek hasilnya di **Table Editor** — harusnya ada tabel:
+3. Setelah selesai, cek di **Table Editor** — harusnya ada 8 tabel:
    - User, Session, Subscription, PatientHistory
-   - Drug, DrugForm, Icd10
-   - AdminUser
+   - Drug, DrugForm, Icd10, AdminUser
 
 ## Verifikasi
 
