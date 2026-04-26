@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { searchDrugs, type LocalDrug } from '../../db/sync';
+import { useAuthGate } from '../../lib/use-auth-gate';
 import { colors, space, fontSize, radius } from '../../lib/theme';
 
 const ROUTES = [
@@ -16,6 +17,7 @@ const ROUTES = [
 ];
 
 export default function DrugsScreen() {
+  useAuthGate();
   const router = useRouter();
   const [q, setQ] = useState('');
   const [route, setRoute] = useState('');

@@ -9,11 +9,13 @@ import {
   calcPediatric, calcAdult, freqLabel, type PediatricResult, type AdultResult,
 } from '../../../lib/dose-calc';
 import { useAuthStore } from '../../../lib/auth-store';
+import { useAuthGate } from '../../../lib/use-auth-gate';
 import { colors, space, fontSize, radius } from '../../../lib/theme';
 
 type Mode = 'PEDIATRIC' | 'ADULT';
 
 export default function DrugDetail() {
+  useAuthGate();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { subscription } = useAuthStore();

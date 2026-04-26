@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { listPatients, listHistory } from '../../db/sync';
+import { useAuthGate } from '../../lib/use-auth-gate';
 import { colors, space, fontSize, radius } from '../../lib/theme';
 
 type Patient = { patientName: string; patientDob: string; lastAt: string; count: number };
@@ -12,6 +13,7 @@ type HistoryRow = {
 };
 
 export default function HistoryScreen() {
+  useAuthGate();
   const [view, setView] = useState<'patients' | 'detail'>('patients');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selected, setSelected] = useState<Patient | null>(null);

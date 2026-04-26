@@ -8,21 +8,29 @@ import { colors, space, fontSize, radius } from '../../lib/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, subscription, refreshMe } = useAuthStore();
+  const { user, session, subscription, refreshMe } = useAuthStore();
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
 
+  const isLoggedIn = !!session;
+
   useEffect(() => {
-    refreshMe();
+    if (isLoggedIn) refreshMe();
     flagStorage.get(FLAG_LAST_SYNC_AT).then(setLastSync);
-    // Auto-sync on first open
-    (async () => {
-      const hasSync = await flagStorage.get(FLAG_LAST_SYNC_AT);
-      if (!hasSync) doSync();
-    })();
-  }, []);
+    if (isLoggedIn) {
+      (async () => {
+        const hasSync = await flagStorage.get(FLAG_LAST_SYNC_AT);
+        if (!hasSync) doSync();
+      })();
+    }
+  }, [isLoggedIn]);
+
+  const requireLogin = () => {
+    router.push('/(auth)/login');
+  };
 
   const doSync = async () => {
+    if (!isLoggedIn) return requireLogin();
     setSyncing(true);
     try {
       const r = await syncCatalog();
@@ -46,27 +54,50 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.safe} contentContainerStyle={{ padding: space.lg }}>
-      <Text style={styles.greeting}>Halo, {user?.name?.split(' ')[0] ?? 'Sejawat'} 👋</Text>
-      {subBadge && (
-        <View style={[styles.badge, { backgroundColor: subBadge.color }]}>
-          <Text style={styles.badgeText}>{subBadge.label}</Text>
+      {isLoggedIn ? (
+        <>
+          <Text style={styles.greeting}>Halo, {user?.name?.split(' ')[0] ?? 'Sejawat'} 👋</Text>
+          {subBadge && (
+            <View style={[styles.badge, { backgroundColor: subBadge.color }]}>
+              <Text style={styles.badgeText}>{subBadge.label}</Text>
+            </View>
+          )}
+        </>
+      ) : (
+        <View style={styles.loginCta}>
+          <Text style={styles.loginCtaTitle}>Selamat datang di Dosis Obat</Text>
+          <Text style={styles.loginCtaText}>
+            Login atau daftar dulu untuk mulai cari obat, hitung dosis, dan simpan riwayat pasien.
+          </Text>
+          <Pressable onPress={requireLogin} style={styles.loginCtaBtn}>
+            <Text style={styles.loginCtaBtnText}>Masuk / Daftar</Text>
+          </Pressable>
         </View>
       )}
 
       <View style={styles.grid}>
-        <Pressable style={styles.tile} onPress={() => router.push('/(app)/drugs')}>
+        <Pressable
+          style={styles.tile}
+          onPress={() => (isLoggedIn ? router.push('/(app)/drugs') : requireLogin())}
+        >
           <Text style={styles.tileEmoji}>💊</Text>
           <Text style={styles.tileTitle}>Cari Obat</Text>
           <Text style={styles.tileSub}>Hitung dosis dewasa & anak</Text>
         </Pressable>
 
-        <Pressable style={styles.tile} onPress={() => router.push('/(app)/icd10')}>
+        <Pressable
+          style={styles.tile}
+          onPress={() => (isLoggedIn ? router.push('/(app)/icd10') : requireLogin())}
+        >
           <Text style={styles.tileEmoji}>📋</Text>
           <Text style={styles.tileTitle}>ICD-10</Text>
           <Text style={styles.tileSub}>Diagnosis pasien</Text>
         </Pressable>
 
-        <Pressable style={styles.tile} onPress={() => router.push('/(app)/history')}>
+        <Pressable
+          style={styles.tile}
+          onPress={() => (isLoggedIn ? router.push('/(app)/history') : requireLogin())}
+        >
           <Text style={styles.tileEmoji}>📚</Text>
           <Text style={styles.tileTitle}>Riwayat</Text>
           <Text style={styles.tileSub}>Per pasien</Text>
@@ -75,11 +106,17 @@ export default function HomeScreen() {
         <Pressable style={styles.tile} onPress={doSync} disabled={syncing}>
           <Text style={styles.tileEmoji}>{syncing ? '⏳' : '🔄'}</Text>
           <Text style={styles.tileTitle}>{syncing ? 'Menyinkron…' : 'Sinkron'}</Text>
-          <Text style={styles.tileSub}>{lastSync ? `Terakhir: ${new Date(lastSync).toLocaleString('id-ID')}` : 'Belum sinkron'}</Text>
+          <Text style={styles.tileSub}>
+            {!isLoggedIn
+              ? 'Login dulu'
+              : lastSync
+                ? `Terakhir: ${new Date(lastSync).toLocaleString('id-ID')}`
+                : 'Belum sinkron'}
+          </Text>
         </Pressable>
       </View>
 
-      {subscription?.kind === 'EXPIRED' && (
+      {isLoggedIn && subscription?.kind === 'EXPIRED' && (
         <View style={styles.warningBox}>
           <Text style={styles.warningTitle}>Trial telah berakhir</Text>
           <Text style={styles.warningBody}>
@@ -98,6 +135,23 @@ const styles = StyleSheet.create({
   greeting: { fontSize: fontSize.xl, color: colors.text, fontWeight: '600' },
   badge: { alignSelf: 'flex-start', paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.lg, marginTop: space.sm },
   badgeText: { color: '#fff', fontSize: fontSize.xs, fontWeight: '600' },
+  loginCta: {
+    padding: space.lg,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    marginBottom: space.md,
+  },
+  loginCtaTitle: { color: '#fff', fontSize: fontSize.xl, fontWeight: '700' },
+  loginCtaText: { color: '#fff', fontSize: fontSize.sm, marginTop: space.xs, lineHeight: 20, opacity: 0.95 },
+  loginCtaBtn: {
+    marginTop: space.md,
+    backgroundColor: '#fff',
+    paddingVertical: space.sm,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.md,
+    alignSelf: 'flex-start',
+  },
+  loginCtaBtnText: { color: colors.primary, fontWeight: '700', fontSize: fontSize.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginTop: space.xl },
   tile: {
     flexBasis: '47%',

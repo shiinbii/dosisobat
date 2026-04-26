@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../../lib/auth-store';
 import { syncHistoryFromCloud } from '../../db/sync';
+import { useAuthGate } from '../../lib/use-auth-gate';
 import { colors, space, fontSize, radius } from '../../lib/theme';
 
 export default function ProfileScreen() {
+  useAuthGate();
   const { user, subscription, logout } = useAuthStore();
   const [syncingHistory, setSyncingHistory] = useState(false);
 

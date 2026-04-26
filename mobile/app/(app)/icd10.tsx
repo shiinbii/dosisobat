@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { View, Text, TextInput, FlatList, StyleSheet } from 'react-native';
 import { searchIcd10 } from '../../db/sync';
+import { useAuthGate } from '../../lib/use-auth-gate';
 import { colors, space, fontSize, radius } from '../../lib/theme';
 
 export default function Icd10Screen() {
+  useAuthGate();
   const [q, setQ] = useState('');
   const [items, setItems] = useState<Array<{ code: string; description: string; descriptionId: string | null; category: string | null }>>([]);
 

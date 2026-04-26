@@ -35,14 +35,14 @@ export default function RootLayout() {
       router.replace('/disclaimer');
       return;
     }
-    if (disclaimerAccepted && !session && !inAuth) {
-      router.replace('/(auth)/login');
-      return;
-    }
+    // Logged-in user di halaman auth/disclaimer → masuk app.
     if (disclaimerAccepted && session && (inAuth || onDisclaimer)) {
       router.replace('/(app)');
       return;
     }
+    // Unauthenticated user TIDAK dipaksa ke login. Bisa lihat home,
+    // tapi tiap fitur akan redirect sendiri ke login lewat useFocusEffect /
+    // onPress handler di screen masing-masing.
   }, [ready, session, segments, disclaimerAccepted]);
 
   if (!ready || disclaimerAccepted === null) {
