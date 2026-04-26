@@ -2,21 +2,23 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApi } from '@/lib/api';
 import { DrugForm } from '../DrugForm';
+import { createDrug, type DrugInput } from '../actions';
 
 export default function NewDrug() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
-  const save = async (data: any) => {
+  const save = async (data: DrugInput) => {
     setBusy(true);
     try {
-      await adminApi('/admin/drugs', { method: 'POST', body: data });
+      await createDrug(data);
       router.push('/dashboard/drugs');
     } catch (e: any) {
       alert(e?.message ?? 'Gagal menyimpan.');
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

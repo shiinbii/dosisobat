@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { adminApi } from '@/lib/api';
 import { DrugForm } from '../DrugForm';
+import { getDrugById, updateDrug, type DrugInput } from '../actions';
 
 export default function EditDrug() {
   const params = useParams<{ id: string }>();
@@ -12,22 +12,24 @@ export default function EditDrug() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    adminApi<{ items: any[] }>('/admin/drugs').then((r) => {
-      const d = r.items.find((x) => x.id === params.id);
-      setDrug(d ?? null);
-    });
+    if (!params.id) return;
+    getDrugById(params.id)
+      .then(setDrug)
+      .catch((e) => alert(`Gagal memuat: ${e.message}`));
   }, [params.id]);
 
   if (!drug) return <p>Memuat…</p>;
 
-  const save = async (data: any) => {
+  const save = async (data: DrugInput) => {
     setBusy(true);
     try {
-      await adminApi(`/admin/drugs/${params.id}`, { method: 'PUT', body: data });
+      await updateDrug(params.id, data);
       router.push('/dashboard/drugs');
     } catch (e: any) {
       alert(e?.message ?? 'Gagal menyimpan.');
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

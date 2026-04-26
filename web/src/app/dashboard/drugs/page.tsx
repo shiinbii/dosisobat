@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { adminApi } from '@/lib/api';
+import { deleteDrug } from './actions';
 
 type Drug = { id: string; name: string; brandNames: string; category: string; routes: string; isActive: boolean };
 
@@ -34,11 +34,14 @@ export default function DrugsPage() {
     !q || d.name.toLowerCase().includes(q.toLowerCase()) || d.brandNames.toLowerCase().includes(q.toLowerCase())
   );
 
-  // CRUD masih via backend lama — akan diganti ke Server Action di Fase 4.
   const remove = async (id: string) => {
     if (!confirm('Nonaktifkan obat ini?')) return;
-    await adminApi(`/admin/drugs/${id}`, { method: 'DELETE' });
-    load();
+    try {
+      await deleteDrug(id);
+      load();
+    } catch (e: any) {
+      alert(e?.message ?? 'Gagal hapus.');
+    }
   };
 
   return (

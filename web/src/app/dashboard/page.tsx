@@ -1,19 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { adminApi } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardHome() {
   const [stats, setStats] = useState<{ drugs: number; icd10: number; users: number } | null>(null);
 
   useEffect(() => {
     Promise.all([
-      adminApi<{ items: any[] }>('/admin/drugs'),
-      adminApi<{ items: any[] }>('/admin/icd10'),
-      adminApi<{ items: any[] }>('/admin/users'),
-    ]).then(([d, i, u]) => {
-      setStats({ drugs: d.items.length, icd10: i.items.length, users: u.items.length });
-    }).catch(() => setStats({ drugs: 0, icd10: 0, users: 0 }));
+      supabase.from('Drug').select('id', { count: 'exact', head: true }).eq('isActive', true),
+      supabase.from('Icd10').select('code', { count: 'exact', head: true }).eq('isActive', true),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    ])
+      .then(([d, i, u]) => {
+        setStats({
+          drugs: d.count ?? 0,
+          icd10: i.count ?? 0,
+          users: u.count ?? 0,
+        });
+      })
+      .catch(() => setStats({ drugs: 0, icd10: 0, users: 0 }));
   }, []);
 
   return (
