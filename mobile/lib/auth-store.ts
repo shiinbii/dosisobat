@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { getDeviceId } from './device';
 
 export type Profession = 'DOKTER' | 'APOTEKER' | 'PERAWAT' | 'BIDAN' | 'MAHASISWA' | 'LAINNYA';
 
@@ -40,12 +41,15 @@ type State = {
   session: Session | null;
   user: CurrentUser | null;
   subscription: SubscriptionStatus | null;
+  /** Set kalau user di-logout paksa karena login di device lain. */
+  forceLogoutReason: string | null;
 
   init: () => Promise<void>;
   register: (data: { email: string; password: string; name: string; profession: Profession }) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
+  clearForceLogoutReason: () => void;
 };
 
 function deriveStatus(profile: ProfileRow | null, sub: SubscriptionRow | null): SubscriptionStatus {
@@ -107,37 +111,133 @@ function buildUser(session: Session, profile: ProfileRow | null): CurrentUser {
   };
 }
 
+// ============================================================
+// Realtime listener — single-active-device enforcement
+// ============================================================
+
+let realtimeChannel: RealtimeChannel | null = null;
+let listenerDeviceId: string | null = null;
+let listenerUserId: string | null = null;
+
+function stopRealtimeListener() {
+  if (realtimeChannel) {
+    supabase.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+  listenerDeviceId = null;
+  listenerUserId = null;
+}
+
+function startRealtimeListener(userId: string, myDeviceId: string) {
+  // Kalau sudah listen untuk user+device yang sama, skip.
+  if (realtimeChannel && listenerUserId === userId && listenerDeviceId === myDeviceId) return;
+  stopRealtimeListener();
+
+  listenerUserId = userId;
+  listenerDeviceId = myDeviceId;
+
+  realtimeChannel = supabase
+    .channel(`profile-changes:${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${userId}`,
+      },
+      async (payload) => {
+        const newDevice = (payload.new as any)?.current_device_id as string | null | undefined;
+        if (newDevice && newDevice !== myDeviceId) {
+          // Device lain login — kita harus logout.
+          await supabase.auth.signOut();
+          useAuthStore.setState({
+            forceLogoutReason: 'Akun Anda login di perangkat lain. Sesi di perangkat ini diakhiri.',
+          });
+        }
+      }
+    )
+    .subscribe();
+}
+
+async function claimDevice(userId: string, deviceId: string) {
+  // Update current_device_id ke device kita. Trigger realtime UPDATE → device
+  // sebelumnya (kalau ada) akan menerima event dan logout sendiri.
+  const { error } = await supabase
+    .from('profiles')
+    .update({ current_device_id: deviceId })
+    .eq('id', userId);
+  if (error) {
+    console.warn('[auth] gagal claim device:', error.message);
+  }
+}
+
+// ============================================================
+// Store
+// ============================================================
+
 export const useAuthStore = create<State>((set, get) => ({
   ready: false,
   session: null,
   user: null,
   subscription: null,
+  forceLogoutReason: null,
 
   async init() {
     const { data } = await supabase.auth.getSession();
+
     if (data.session) {
-      const { profile, sub } = await fetchProfileAndSub(data.session.user.id);
-      set({
-        session: data.session,
-        user: buildUser(data.session, profile),
-        subscription: deriveStatus(profile, sub),
-        ready: true,
-      });
+      const userId = data.session.user.id;
+      const myDeviceId = await getDeviceId();
+      const { profile, sub } = await fetchProfileAndSub(userId);
+
+      // Kalau profile.current_device_id sudah berubah ke device lain saat
+      // app ini offline → langsung sign out.
+      if (profile && profile.current_device_id && profile.current_device_id !== myDeviceId) {
+        await supabase.auth.signOut();
+        set({
+          session: null,
+          user: null,
+          subscription: null,
+          ready: true,
+          forceLogoutReason: 'Akun Anda login di perangkat lain.',
+        });
+      } else {
+        // Re-claim device & start realtime listener.
+        await claimDevice(userId, myDeviceId);
+        startRealtimeListener(userId, myDeviceId);
+        set({
+          session: data.session,
+          user: buildUser(data.session, profile),
+          subscription: deriveStatus(profile, sub),
+          ready: true,
+        });
+      }
     } else {
       set({ session: null, user: null, subscription: null, ready: true });
     }
 
-    supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      if (newSession) {
-        const { profile, sub } = await fetchProfileAndSub(newSession.user.id);
-        set({
-          session: newSession,
-          user: buildUser(newSession, profile),
-          subscription: deriveStatus(profile, sub),
-        });
-      } else {
+    supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!newSession) {
+        stopRealtimeListener();
         set({ session: null, user: null, subscription: null });
+        return;
       }
+      const myDeviceId = await getDeviceId();
+      const { profile, sub } = await fetchProfileAndSub(newSession.user.id);
+
+      // Untuk SIGNED_IN (login baru) — claim device.
+      // Untuk TOKEN_REFRESHED / INITIAL_SESSION — sudah di-handle di init().
+      if (event === 'SIGNED_IN') {
+        await claimDevice(newSession.user.id, myDeviceId);
+      }
+      startRealtimeListener(newSession.user.id, myDeviceId);
+
+      set({
+        session: newSession,
+        user: buildUser(newSession, profile),
+        subscription: deriveStatus(profile, sub),
+      });
     });
   },
 
@@ -153,15 +253,17 @@ export const useAuthStore = create<State>((set, get) => ({
   },
 
   async login(email, password) {
+    set({ forceLogoutReason: null });
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
     if (error) throw error;
-    // onAuthStateChange listener akan refresh state otomatis
+    // claimDevice + state refresh dijalankan oleh onAuthStateChange handler.
   },
 
   async logout() {
+    stopRealtimeListener();
     await supabase.auth.signOut();
   },
 
@@ -173,5 +275,9 @@ export const useAuthStore = create<State>((set, get) => ({
       user: buildUser(session, profile),
       subscription: deriveStatus(profile, sub),
     });
+  },
+
+  clearForceLogoutReason() {
+    set({ forceLogoutReason: null });
   },
 }));

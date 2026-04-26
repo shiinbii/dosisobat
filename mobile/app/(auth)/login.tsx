@@ -10,7 +10,7 @@ import { colors, space, fontSize, radius } from '../../lib/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { login, forceLogoutReason, clearForceLogoutReason } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -43,6 +43,14 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.title}>Dosis Obat</Text>
           <Text style={styles.subtitle}>Masuk untuk mulai menghitung</Text>
+
+          {forceLogoutReason && (
+            <View style={styles.notice}>
+              <Text style={styles.noticeIcon}>ℹ️</Text>
+              <Text style={styles.noticeText}>{forceLogoutReason}</Text>
+              <Text onPress={clearForceLogoutReason} style={styles.noticeDismiss}>×</Text>
+            </View>
+          )}
 
           <View style={styles.field}>
             <Text style={styles.label}>Email</Text>
@@ -100,4 +108,18 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5 },
   btnText: { color: '#fff', fontSize: fontSize.lg, fontWeight: '600' },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.sm,
+    backgroundColor: '#fef3c7',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.warning,
+    padding: space.md,
+    borderRadius: radius.md,
+    marginBottom: space.lg,
+  },
+  noticeIcon: { fontSize: fontSize.lg },
+  noticeText: { flex: 1, color: colors.text, fontSize: fontSize.sm, lineHeight: 20 },
+  noticeDismiss: { color: colors.textMuted, fontSize: 24, lineHeight: 24, paddingHorizontal: space.sm },
 });
