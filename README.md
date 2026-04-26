@@ -10,10 +10,10 @@ Aplikasi ini adalah **alat bantu**, bukan pengganti penilaian klinis dokter / ap
 
 ```
 .
-├── backend/      → API server (Fastify + Prisma + PostgreSQL)
-├── admin/        → Web admin panel (Next.js)
+├── backend/      → API server (Fastify + Prisma + PostgreSQL) — akan dihapus Fase 7 migrasi Supabase
+├── web/          → Admin panel (Next.js, responsive — bisa diakses dari browser HP juga)
 ├── mobile/       → Mobile app (Expo / React Native)
-└── docs/         → Deployment & build guide
+└── docs/         → Deployment, build guide, SQL migrations (docs/sql/)
 ```
 
 ## Stack
@@ -35,7 +35,7 @@ Prasyarat: Node 20+, pnpm/npm, Docker Desktop, Android Studio (untuk emulator), 
 ### 1. Database (Supabase)
 
 Pilih salah satu cara setup:
-- **Cara cepat (no-CLI)**: copy-paste 4 file di `database/supabase/*.sql` ke Supabase SQL Editor — atau pakai 1 file all-in-one `database/supabase/00_all_in_one.sql`. Detail: [`database/supabase/README.md`](database/supabase/README.md).
+- **Cara cepat (no-CLI)**: copy-paste 4 file di `docs/sql/*.sql` ke Supabase SQL Editor — atau pakai 1 file all-in-one `docs/sql/00_all_in_one.sql`. Detail: [`docs/sql/README.md`](docs/sql/README.md).
 - **Cara Prisma**: `cd backend && npm install && npx prisma migrate deploy && npm run seed`
 
 ### 2. Backend
@@ -46,13 +46,15 @@ npm install
 npm run dev                     # http://localhost:3000
 ```
 
-### 3. Admin Panel
+### 3. Admin Panel (Web)
 
 ```bash
-cd admin
+cd web
 npm install
 npm run dev                     # http://localhost:3001
 ```
+
+URL ini bisa diakses juga dari browser di HP (Tailwind responsive).
 
 Login default admin: `admin@dosis.app` / `admin123` — **WAJIB ganti sebelum produksi**.
 

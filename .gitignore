@@ -59,5 +59,14 @@ dosis obat anak.iml
 src/Main.java
 out/
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code local settings (semua, bukan cuma settings.local.json)
+.claude/
+
+# Documentation lokal — disimpan di disk, tidak di-push
+docs/
+
+# Folder untuk database tambahan / setup Supabase baru di masa depan.
+# Pola: simpan di disk untuk referensi, jangan ke remote.
+database-local/
+supabase-local/
+*.local.sql
